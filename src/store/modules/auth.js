@@ -1,4 +1,4 @@
-import { login } from "@/api/auth";
+import { login, logout } from "@/api/auth";
 import { PcCookie, Key } from "@/utils/cookie";
 
 const state = {
@@ -18,8 +18,8 @@ const mutations = {
         state.accessToken = access_token;
         state.refreshToken = refresh_token;
         PcCookie.set(Key.userInfoKey, userInfo);
-        PcCookie.set(Key.accessToken, access_token);
-        PcCookie.set(Key.refreshToken, refresh_token);
+        PcCookie.set(Key.accessTokenKey, access_token);
+        PcCookie.set(Key.refreshTokenKey, refresh_token);
     },
     // 重置用户状态
     RESET_USER_STATE(state) {
@@ -27,8 +27,8 @@ const mutations = {
         state.accessToken = null;
         state.refreshToken = null;
         PcCookie.remove(Key.userInfoKey);
-        PcCookie.remove(Key.accessToken);
-        PcCookie.remove(Key.refreshToken);
+        PcCookie.remove(Key.accessTokenKey);
+        PcCookie.remove(Key.refreshTokenKey);
     }
 };
 
@@ -36,18 +36,37 @@ const mutations = {
 const actions = {
     UserLogin({ commit }, userData) {
         const { username, password } = userData;
-        login({ username: username.trim(), password })
+        return new Promise((resolve, reject) => {
+            login({ username: username.trim(), password })
+                .then(res => {
+                    console.log(res, "哈哈");
+                    const { code, data } = res;
+                    if (code === 200) {
+                        // 状态赋值
+                        commit("SET_USER_STATE", data);
+                    }
+                    // 正常响应
+                    resolve(res);
+                })
+                .catch(err => {
+                    // 重置状态
+                    commit("RESET_USER_STATE");
+                    // 请求异常
+                    reject(err);
+                });
+        });
+    },
+    UserLogout({ state, commit }, redirectURL) {
+        logout(state.accessToken)
             .then(res => {
-                console.log("登录信息", res);
-                const { code, data } = res;
-                if (code === 200) {
-                    // 状态赋值
-                    commit("SET_USER_STATE", data);
+                if (res.code === 200) {
+                    commit("RESET_USER_STATE");
+                    window.location.href = redirectURL || "/";
                 }
             })
             .catch(err => {
-                // 重置状态
                 commit("RESET_USER_STATE");
+                window.location.href = redirectURL || "/";
             });
     }
 };

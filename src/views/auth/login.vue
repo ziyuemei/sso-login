@@ -50,12 +50,12 @@
                 placeholder="6-30位密码，可用数字/字母/符号组合"
                 autocomplete="off"
               />
-              <input type="password" v-model="registerData.repPassword" placeholder="确认密码" />
+              <input type="password" v-model="registerData.repassword" placeholder="确认密码" />
               <div class="error_msg">{{regMessage}}</div>
               <div class="agree">
                 <input type="checkbox" id="tonyi" v-model="registerData.check" />
                 <label for="tonyi">我已经阅读并同意</label>
-                <a href="jvascript:;" @click="xieyi = true">《用户协议》</a>
+                <a href="javascript:;" @click="xieyi = true">《用户协议》</a>
               </div>
               <input type="submit" v-if="subState" disabled="disabled" value="提交中···" class="btn" />
               <input type="submit" v-else value="注册" class="btn" />
@@ -76,6 +76,8 @@
   </div>
 </template>
 <script >
+import { isvalidUsername } from "@/utils/validate";
+import { getXieyi, getUserByUsername, register } from "@/api/auth";
 export default {
   data() {
     return {
@@ -102,6 +104,15 @@ export default {
     };
   },
 
+  created() {
+    if (this.$route.query.redirectURL) {
+      this.redirectURL = this.$route.query.redirectURL;
+    }
+    getXieyi().then((res) => {
+      this.xieyiContent = res;
+    });
+  },
+
   methods: {
     // 切换标签
     changetab(int) {
@@ -114,11 +125,91 @@ export default {
 
     // 提交登录
     loginSubmit() {
-      this.$store.dispatch("UserLogin", this.loginData);
+      if (this.subState) {
+        // 正在登录中...
+        return false;
+      }
+      // 校验用户名是否合法
+      if (!isvalidUsername(this.loginData.username)) {
+        this.loginMessage = "用户名填写错误";
+        return false;
+      }
+      if (this.loginData.password.length < 6) {
+        this.loginMessage = "密码填写错误";
+        return false;
+      }
+      this.subState = true;
+      this.$store
+        .dispatch("UserLogin", this.loginData)
+        .then((res) => {
+          const { code, message } = res;
+          if (code === 200) {
+            window.location.href = this.redirectURL;
+          } else {
+            this.loginMessage = message;
+            this.subState = false;
+          }
+        })
+        .catch((err) => {
+          this.subState = false;
+          this.loginMessage = "系统繁忙，请稍后重试";
+        });
     },
 
     // 提交注册
-    regSubmit() {},
+    async regSubmit() {
+      if (this.subState) {
+        // 正在注册中...
+        return false;
+      }
+      // 校验用户名是否合法
+      if (!isvalidUsername(this.registerData.username)) {
+        this.regMessage = "用户名必须为允许4-30位中文、数字、字母和下划线";
+        return false;
+      }
+      const { code, message, data } = await getUserByUsername(
+        this.registerData.username
+      );
+      if (code !== 200) {
+        this.regMessage = message;
+        return false;
+      }
+      if (data) {
+        this.regMessage = "该用户名已经被注册，请重新输入用户名";
+        return false;
+      }
+      if (
+        this.registerData.password.length < 6 ||
+        this.registerData.password.length > 30
+      ) {
+        this.regMessage = "请输入6-30位密码，区分大小写";
+        return false;
+      }
+      if (this.registerData.repassword !== this.registerData.password) {
+        this.regMessage = "两次密码不一致，请重新输入";
+        return false;
+      }
+      if (!this.registerData.check) {
+        this.regMessage = "请阅读并同意用户协议";
+        return false;
+      }
+      this.subState = true;
+      register(this.registerData)
+        .then((res) => {
+          const { code, message } = res;
+          this.subState = false;
+          if (code === 200) {
+            // 注册成功，返回登录页面
+            this.changetab(1);
+          } else {
+            this.regMessage = message;
+          }
+        })
+        .catch((err) => {
+          this.subState = false;
+          this.loginMessage = "系统繁忙，请稍后重试";
+        });
+    },
   },
 };
 </script>
