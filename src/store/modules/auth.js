@@ -1,4 +1,4 @@
-import { login, logout } from "@/api/auth";
+import { login, logout, refreshToken } from "@/api/auth";
 import { PcCookie, Key } from "@/utils/cookie";
 
 const state = {
@@ -68,6 +68,26 @@ const actions = {
                 commit("RESET_USER_STATE");
                 window.location.href = redirectURL || "/";
             });
+    },
+    // 刷新令牌
+    SendRefreshToken({ state, commit }) {
+        return new Promise((resolve, reject) => {
+            // 判断是否有刷新令牌
+            if (!state.refreshToken) {
+                commit("RESET_USER_STATE");
+                reject("没有刷新令牌");
+                return;
+            }
+            refreshToken(state.refreshToken)
+                .then(res => {
+                    commit("SET_USER_STATE", res.data);
+                    resolve();
+                })
+                .catch(err => {
+                    commit("RESET_USER_STATE");
+                    reject(err);
+                });
+        });
     }
 };
 

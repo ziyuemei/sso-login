@@ -26,7 +26,17 @@ export default {
     this.refreshLogin();
   },
   methods: {
-    refreshLogin() {}
+    refreshLogin() {
+      this.$store
+        .dispatch("SendRefreshToken")
+        .then(() => {
+          this.message = "令牌已刷新";
+          window.location.href = this.redirectURL;
+        })
+        .catch(err => {
+          this.message = `您的身份已过期，请点击<a href="/?redirectURL=${this.redirectURL}">重新登录</a>`;
+        });
+    }
   }
 };
 </script>
