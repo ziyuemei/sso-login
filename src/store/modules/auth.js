@@ -3,8 +3,7 @@ import { PcCookie, Key } from "@/utils/cookie";
 
 const state = {
     userInfo: PcCookie.get(Key.userInfoKey) ?
-        JSON.parse(PcCookie.get(Key.userInfoKey)) :
-        null,
+        JSON.parse(PcCookie.get(Key.userInfoKey)) : null,
     accessToken: PcCookie.get(Key.accessTokenKey),
     refreshToken: PcCookie.get(Key.refreshTokenKey)
 };
@@ -39,7 +38,6 @@ const actions = {
         return new Promise((resolve, reject) => {
             login({ username: username.trim(), password })
                 .then(res => {
-                    console.log(res, "哈哈");
                     const { code, data } = res;
                     if (code === 200) {
                         // 状态赋值
